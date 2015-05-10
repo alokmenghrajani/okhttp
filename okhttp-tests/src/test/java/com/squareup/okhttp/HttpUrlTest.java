@@ -18,6 +18,7 @@ package com.squareup.okhttp;
 import com.squareup.okhttp.UrlComponentEncodingTester.Component;
 import com.squareup.okhttp.UrlComponentEncodingTester.Encoding;
 import java.util.Arrays;
+import java.util.Collections;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -361,7 +362,7 @@ public final class HttpUrlTest {
     new UrlComponentEncodingTester()
         .override(Encoding.IDENTITY, '?', '`')
         .override(Encoding.PERCENT, '\'')
-        .override(Encoding.SKIP, '#')
+        .override(Encoding.SKIP, '#', ' ')
         .test(Component.QUERY);
   }
 
@@ -611,5 +612,71 @@ public final class HttpUrlTest {
         base.newBuilder().addPathSegment("%2e.").addPathSegment("..").build().path());
     assertEquals("/a/b/", base.newBuilder().addPathSegment("").addPathSegment("..").build().path());
     assertEquals("/a/b/c/", base.newBuilder().addPathSegment("").addPathSegment("").build().path());
+  }
+
+  @Test public void composeQueryWithComponents() throws Exception {
+    HttpUrl base = HttpUrl.parse("http://host/");
+    HttpUrl url = base.newBuilder().addQueryParameter("a+=& b", "c+=& d").build();
+    assertEquals("http://host/?a%2B%3D%26+b=c%2B%3D%26+d", url.toString());
+    assertEquals("c+=& d", url.queryParameterValue(0));
+    assertEquals("a+=& b", url.queryParameterName(0));
+    assertEquals("c+=& d", url.queryParameter("a+=& b"));
+    assertEquals(Collections.singleton("a+=& b"), url.queryParameterNames());
+    assertEquals(Collections.singletonList("c+=& d"), url.queryParameterValues("a+=& b"));
+    assertEquals(1, url.querySize());
+    assertEquals("a+=& b=c+=& d", url.decodeQuery()); // Ambiguous! (Though working as designed.)
+    assertEquals("a%2B%3D%26+b=c%2B%3D%26+d", url.query());
+  }
+
+  @Test public void composeQueryWithEncodedComponents() throws Exception {
+    HttpUrl base = HttpUrl.parse("http://host/");
+    HttpUrl url = base.newBuilder().addEncodedQueryParameter("a+=& b", "c+=& d").build();
+    assertEquals("http://host/?a+%3D%26+b=c+%3D%26+d", url.toString());
+    assertEquals("c =& d", url.queryParameter("a =& b"));
+  }
+
+  @Test public void composeQueryRemoveQueryParameter() throws Exception {
+    HttpUrl url = HttpUrl.parse("http://host/").newBuilder()
+        .addQueryParameter("a+=& b", "c+=& d")
+        .removeAllQueryParameters("a+=& b")
+        .build();
+    assertEquals("http://host/", url.toString());
+    assertEquals(null, url.queryParameter("a+=& b"));
+  }
+
+  @Test public void composeQueryRemoveEncodedQueryParameter() throws Exception {
+    HttpUrl url = HttpUrl.parse("http://host/").newBuilder()
+        .addEncodedQueryParameter("a+=& b", "c+=& d")
+        .removeAllEncodedQueryParameters("a+=& b")
+        .build();
+    assertEquals("http://host/", url.toString());
+    assertEquals(null, url.queryParameter("a =& b"));
+  }
+
+  @Test public void composeQuerySetQueryParameter() throws Exception {
+    HttpUrl url = HttpUrl.parse("http://host/").newBuilder()
+        .addQueryParameter("a+=& b", "c+=& d")
+        .setQueryParameter("a+=& b", "ef")
+        .build();
+    assertEquals("http://host/?a%2B%3D%26+b=ef", url.toString());
+    assertEquals("ef", url.queryParameter("a+=& b"));
+  }
+
+  @Test public void composeQuerySetEncodedQueryParameter() throws Exception {
+    HttpUrl url = HttpUrl.parse("http://host/").newBuilder()
+        .addEncodedQueryParameter("a+=& b", "c+=& d")
+        .setEncodedQueryParameter("a+=& b", "ef")
+        .build();
+    assertEquals("http://host/?a+%3D%26+b=ef", url.toString());
+    assertEquals("ef", url.queryParameter("a =& b"));
+  }
+
+  @Test public void removeAllDoesNotRemoveQueryIfNoParametersWereRemoved() throws Exception {
+    HttpUrl url = HttpUrl.parse("http://host/").newBuilder()
+        .query("")
+        .removeAllQueryParameters("a")
+        .build();
+    assertEquals("http://host/?", url.toString());
+    assertEquals(0, url.querySize());
   }
 }

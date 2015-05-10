@@ -78,7 +78,9 @@ public final class WebPlatformUrlTest {
       "Parsing: <http://０Ｘｃ０．０２５０．０１> against <http://other.com/>",
       "Parsing: <http://[2001::1]> against <http://example.org/foo/bar>",
       "Parsing: <http://[2001::1]:80> against <http://example.org/foo/bar>",
-      "Parsing: <http://[google.com]> against <http://other.com/>"
+      "Parsing: <http://[google.com]> against <http://other.com/>",
+      // TODO(jwilson): derive the exact rules on when ' ' maps to '+' vs. '%20'.
+      "Parsing: <http://f:21/ b ? d # e > against <http://example.org/foo/bar>"
   );
 
   /** Test how {@link HttpUrl} does against the web platform test suite. */
